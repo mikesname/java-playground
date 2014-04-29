@@ -1,5 +1,10 @@
 package eu.ehri.project.importers;
 
+import com.hp.hpl.jena.ontology.*;
+import com.hp.hpl.jena.rdf.model.*;
+import com.hp.hpl.jena.util.FileManager;
+import com.hp.hpl.jena.util.iterator.ExtendedIterator;
+import com.hp.hpl.jena.util.iterator.Filter;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.*;
 import org.semanticweb.skos.*;
@@ -7,7 +12,9 @@ import org.semanticweb.skosapibinding.SKOSManager;
 import uk.ac.manchester.cs.skos.SKOSRDFVocabulary;
 
 import java.io.File;
+import java.io.InputStream;
 import java.net.URI;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -63,12 +70,57 @@ public class SkosImporter {
         }
     }
 
+    public static void jena(String file) throws Exception {
+        OntModel model = ModelFactory.createOntologyModel();
+        InputStream in = FileManager.get().open(file);
+        model.read(in, null);
+        OntClass ontClass = model.getOntClass(CONCEPT.toString());
+
+        ExtendedIterator<? extends OntResource> extendedIterator = ontClass.listInstances();
+
+        final ObjectProperty prefLabelProperty = model.getObjectProperty(PREF_LABEL.toString());
+        final ObjectProperty broaderProperty = model.getObjectProperty(BROADER.toString());
+
+        while (extendedIterator.hasNext()) {
+            Resource resource = extendedIterator.next();
+            System.out.println(resource.getURI());
+            Statement property = resource.getProperty(prefLabelProperty);
+            RDFNode object = property.getObject();
+            if (object.isLiteral()) {
+                Literal literal = object.asLiteral();
+                System.out.println(" - " + literal.getString() + " = " + literal.getLanguage());
+            }
+
+            StmtIterator stmtIterator = resource.listProperties();
+            List<Statement> statements = stmtIterator.filterKeep(new Filter<Statement>() {
+                @Override
+                public boolean accept(Statement statement) {
+                    return statement.getPredicate().getURI().equals(BROADER.toString());
+                }
+            }).toList();
+            for (Statement statement : statements) {
+                System.out.println(" - broader: " + statement.getPredicate() + " -> " +  statement.getObject());
+            }
+
+            StmtIterator stmtIterator2 = resource.listProperties();
+            List<Statement> statements2 = stmtIterator2.filterKeep(new Filter<Statement>() {
+                @Override
+                public boolean accept(Statement statement) {
+                    return statement.getPredicate().getURI().equals(NARROWER.toString());
+                }
+            }).toList();
+            for (Statement statement : statements2) {
+                System.out.println(" - narrower: " + statement.getPredicate() + " -> " +  statement.getObject());
+            }
+        }
+    }
+
 
     public static void main(String[] args) throws Exception {
         if (args.length < 1) {
             throw new IllegalArgumentException("Usage: tool [skos-file]");
         }
-        owlMain(args[0]);
+        jena(args[0]);
     }
 
     public static void skos(String file) throws Exception {

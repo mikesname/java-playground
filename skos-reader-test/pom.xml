@@ -23,6 +23,13 @@
             <artifactId>guava</artifactId>
             <version>17.0</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.jena</groupId>
+            <artifactId>jena-core</artifactId>
+            <version>2.11.1</version>
+        </dependency>
+
     </dependencies>
 
     <build>
